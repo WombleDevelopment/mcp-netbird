@@ -1,0 +1,105 @@
+name: Build artifacts (no publish)
+
+# Run this from the Actions tab when you want runnable binaries or container
+# images without cutting a public release. Nothing is pushed to a registry and
+# no GitHub Release is created; everything lands as downloadable run artifacts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_docker:
+        description: 'Also produce loadable Docker image tarballs'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  binaries:
+    name: Binaries, archives and .deb packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build a snapshot with GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --snapshot --clean --skip=publish
+
+      - name: Upload binaries and packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-netbird-binaries
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.deb
+            dist/checksums.txt
+
+  images:
+    name: Docker image (${{ matrix.variant }}, linux/${{ matrix.arch }})
+    if: ${{ inputs.include_docker }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [ stdio, sse ]
+        arch: [ amd64, arm64 ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Select Dockerfile
+        id: df
+        run: |
+          if [ "${{ matrix.variant }}" = "sse" ]; then
+            echo "file=./Dockerfile.sse" >> "$GITHUB_OUTPUT"
+          else
+            echo "file=./Dockerfile" >> "$GITHUB_OUTPUT"
+          fi
+          echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+
+      # The builder stage cross-compiles, so the arm64 image is produced on the
+      # amd64 runner at native speed and exported straight to a tarball.
+      - name: Build image tarball
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ steps.df.outputs.file }}
+          platforms: linux/${{ matrix.arch }}
+          push: false
+          build-args: |
+            VERSION=snapshot-${{ github.sha }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ steps.df.outputs.date }}
+          outputs: type=docker,dest=./mcp-netbird-${{ matrix.variant }}-${{ matrix.arch }}.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Compress
+        run: gzip -9 "mcp-netbird-${{ matrix.variant }}-${{ matrix.arch }}.tar"
+
+      - name: Upload image tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-netbird-image-${{ matrix.variant }}-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 14
+          path: mcp-netbird-${{ matrix.variant }}-${{ matrix.arch }}.tar.gz

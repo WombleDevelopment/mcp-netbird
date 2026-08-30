@@ -1,41 +1,46 @@
-# Build stage
-FROM golang:1.24-bullseye AS builder
+# syntax=docker/dockerfile:1
+#
+# SSE transport image (long-running server, e.g. Docker MCP Gateway/Toolkit or
+# any client that connects over HTTP instead of launching a subprocess).
+#
+# The builder stage is pinned to the *build* platform and cross-compiles to the
+# target platform, so `docker buildx --platform linux/amd64,linux/arm64` never
+# needs QEMU emulation and both architectures build at native speed.
 
-# Set the working directory
+# Override to build behind a registry mirror or in an air-gapped environment,
+# e.g. --build-arg GO_IMAGE=mirror.gcr.io/library/golang:1.24-bookworm
+ARG GO_IMAGE=golang:1.24-bookworm
+
+FROM --platform=$BUILDPLATFORM ${GO_IMAGE} AS builder
+
 WORKDIR /app
 
-# Copy go.mod and go.sum files
+# Dependency layer: cached until go.mod/go.sum change.
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
-# Copy the source code
 COPY . .
 
-# Build the application
-RUN go build -o mcp-netbird ./cmd/mcp-netbird
+ARG TARGETOS
+ARG TARGETARCH
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_DATE=unknown
 
-# Final stage
-FROM debian:bullseye-slim
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -trimpath \
+      -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${BUILD_DATE}" \
+      -o /out/mcp-netbird ./cmd/mcp-netbird
 
-# Install ca-certificates for HTTPS requests
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+# Runtime stage: static distroless base. No shell, no package manager, no root.
+# CA certificates are included, which is all the static binary needs to reach
+# the NetBird API over HTTPS.
+FROM gcr.io/distroless/static-debian12:nonroot
 
-# Create a non-root user
-RUN useradd -r -u 1000 -m mcp-netbird
+COPY --from=builder /out/mcp-netbird /usr/local/bin/mcp-netbird
 
-# Set the working directory
-WORKDIR /app
+USER nonroot:nonroot
 
-# Copy the binary from the builder stage
-COPY --from=builder --chown=1000:1000 /app/mcp-netbird /app/
-
-# Use the non-root user
-USER mcp-netbird
-
-# Expose the port the app runs on
 EXPOSE 8001
 
-# Run the application in SSE mode
-ENTRYPOINT ["/app/mcp-netbird", "--transport", "sse", "--sse-address", "0.0.0.0:8001"]
+ENTRYPOINT ["/usr/local/bin/mcp-netbird", "--transport", "sse", "--sse-address", "0.0.0.0:8001"]

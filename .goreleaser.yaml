@@ -34,7 +34,7 @@ builds:
 
 archives:
   - id: default
-    format: tar.gz
+    formats: [ tar.gz ]
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -45,7 +45,7 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [ zip ]
     files:
       - LICENSE
       - NOTICE
@@ -58,7 +58,7 @@ nfpms:
   - id: mcp-netbird-deb
     package_name: mcp-netbird
     vendor: XNet Inc.
-    homepage: https://github.com/XNet-NGO/mcp-netbird
+    homepage: https://github.com/WombleDevelopment/mcp-netbird
     maintainer: Joshua S. Doucette <joshua@xnet.company>
     description: |
       NetBird MCP Server - Comprehensive Model Context Protocol server for NetBird
@@ -93,7 +93,7 @@ checksum:
   algorithm: sha256
 
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
@@ -116,7 +116,7 @@ changelog:
 
 release:
   github:
-    owner: XNet-NGO
+    owner: WombleDevelopment
     name: mcp-netbird
   draft: false
   prerelease: auto
@@ -124,7 +124,11 @@ release:
   header: |
     ## mcp-netbird {{ .Tag }}
     
-    **Released by XNet Inc. and Joshua S. Doucette**
+    Fork of [XNet-NGO/mcp-netbird](https://github.com/XNet-NGO/mcp-netbird),
+    originally released by XNet Inc. and Joshua S. Doucette.
+    
+    > **Note:** this fork does not ship the NetBird user-management tools
+    > (`list/get/invite/update/delete_netbird_user`). It exposes 59 tools.
     
     ### Supported Platforms
     
@@ -137,14 +141,14 @@ release:
     #### Linux (Debian/Ubuntu)
     ```bash
     # Download the .deb package for your architecture
-    wget https://github.com/XNet-NGO/mcp-netbird/releases/download/{{ .Tag }}/mcp-netbird_{{ .Version }}_linux_x86_64.deb
+    wget https://github.com/WombleDevelopment/mcp-netbird/releases/download/{{ .Tag }}/mcp-netbird_{{ .Version }}_linux_x86_64.deb
     sudo dpkg -i mcp-netbird_{{ .Version }}_linux_x86_64.deb
     ```
     
     #### Linux (Other Distributions)
     ```bash
     # Download and extract the tarball
-    wget https://github.com/XNet-NGO/mcp-netbird/releases/download/{{ .Tag }}/mcp-netbird_{{ .Version }}_Linux_x86_64.tar.gz
+    wget https://github.com/WombleDevelopment/mcp-netbird/releases/download/{{ .Tag }}/mcp-netbird_{{ .Version }}_Linux_x86_64.tar.gz
     tar -xzf mcp-netbird_{{ .Version }}_Linux_x86_64.tar.gz
     sudo mv mcp-netbird /usr/local/bin/
     ```
@@ -152,12 +156,12 @@ release:
     #### macOS
     ```bash
     # Intel Macs
-    wget https://github.com/XNet-NGO/mcp-netbird/releases/download/{{ .Tag }}/mcp-netbird_{{ .Version }}_Darwin_x86_64.tar.gz
+    wget https://github.com/WombleDevelopment/mcp-netbird/releases/download/{{ .Tag }}/mcp-netbird_{{ .Version }}_Darwin_x86_64.tar.gz
     tar -xzf mcp-netbird_{{ .Version }}_Darwin_x86_64.tar.gz
     sudo mv mcp-netbird /usr/local/bin/
     
     # Apple Silicon Macs
-    wget https://github.com/XNet-NGO/mcp-netbird/releases/download/{{ .Tag }}/mcp-netbird_{{ .Version }}_Darwin_arm64.tar.gz
+    wget https://github.com/WombleDevelopment/mcp-netbird/releases/download/{{ .Tag }}/mcp-netbird_{{ .Version }}_Darwin_arm64.tar.gz
     tar -xzf mcp-netbird_{{ .Version }}_Darwin_arm64.tar.gz
     sudo mv mcp-netbird /usr/local/bin/
     ```
@@ -170,7 +174,11 @@ release:
     
     ### Docker
     ```bash
-    docker pull ghcr.io/xnet-ngo/mcp-netbird:{{ .Tag }}
+    # stdio transport (subprocess MCP clients)
+    docker pull ghcr.io/wombledevelopment/mcp-netbird:{{ .Tag }}
+    
+    # SSE transport (long-running HTTP server)
+    docker pull ghcr.io/wombledevelopment/mcp-netbird:{{ .Tag }}-sse
     ```
     
     ### What's Changed
@@ -179,7 +187,7 @@ release:
     
     ---
     
-    **Full Changelog**: https://github.com/XNet-NGO/mcp-netbird/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/WombleDevelopment/mcp-netbird/compare/{{ .PreviousTag }}...{{ .Tag }}
     
     ### License
     

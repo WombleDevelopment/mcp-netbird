@@ -1,14 +1,20 @@
 # NetBird MCP Server
 
-A comprehensive [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for [NetBird](https://netbird.io/) providing 50+ tools for complete VPN infrastructure management through AI assistants.
+A comprehensive [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for [NetBird](https://netbird.io/) providing 59 tools for complete VPN infrastructure management through AI assistants.
 
 **Maintained by XNet Inc.**  
 **Lead Developer: Joshua S. Doucette**
 
+> **This is a fork of [XNet-NGO/mcp-netbird](https://github.com/XNet-NGO/mcp-netbird).**
+> It deliberately ships **without the NetBird user-management tools**
+> (`list`/`get`/`invite`/`update`/`delete_netbird_user`). User administration is
+> deferred to a separate, more tightly controlled tool. This build advertises
+> **59 tools**; run `mcp-netbird --version` to confirm which build you have.
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/XNet-NGO/mcp-netbird)](go.mod)
-[![Release](https://img.shields.io/github/v/release/XNet-NGO/mcp-netbird)](https://github.com/XNet-NGO/mcp-netbird/releases)
-[![Docker Hub](https://img.shields.io/docker/pulls/xnetadmin/mcp-netbird)](https://hub.docker.com/r/xnetadmin/mcp-netbird)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/WombleDevelopment/mcp-netbird)](go.mod)
+[![Release](https://img.shields.io/github/v/release/WombleDevelopment/mcp-netbird)](https://github.com/WombleDevelopment/mcp-netbird/releases)
+[![CI](https://github.com/WombleDevelopment/mcp-netbird/actions/workflows/ci.yml/badge.svg)](https://github.com/WombleDevelopment/mcp-netbird/actions/workflows/ci.yml)
 
 ## About
 
@@ -28,25 +34,57 @@ Originally derived from the MCP Server for Grafana by Grafana Labs, this project
 
 The easiest way to get started is using Docker with the Docker MCP Gateway:
 
-```bash
-# Pull the latest image
-docker pull xnetadmin/mcp-netbird:latest
+Two images are published per release:
 
-# Run in SSE mode for remote access
+| Image | Transport | Use when |
+|-------|-----------|----------|
+| `ghcr.io/wombledevelopment/mcp-netbird:latest` | stdio | your MCP client launches the server as a subprocess (Claude Desktop, Claude Code, Kiro) |
+| `ghcr.io/wombledevelopment/mcp-netbird:latest-sse` | SSE | you want a long-running HTTP server (Docker MCP Gateway, remote/shared use) |
+
+```bash
+# Long-running SSE server
+docker pull ghcr.io/wombledevelopment/mcp-netbird:latest-sse
+
 docker run -d \
   --name mcp-netbird \
   -p 8001:8001 \
   -e NETBIRD_API_TOKEN=your_token_here \
   -e NETBIRD_API_HOST=api.netbird.io \
-  xnetadmin/mcp-netbird:latest \
-  -t sse -sse-address 0.0.0.0:8001
+  ghcr.io/wombledevelopment/mcp-netbird:latest-sse
 ```
+
+Both images are multi-architecture (`linux/amd64` and `linux/arm64`) and run as a
+non-root user on a distroless base.
 
 Then configure your MCP client (see [Configuration](#configuration) below).
 
 ### Installing from Releases
 
-Download pre-built binaries for your platform from the [releases page](https://github.com/XNet-NGO/mcp-netbird/releases).
+Download pre-built binaries for your platform from the [releases page](https://github.com/WombleDevelopment/mcp-netbird/releases).
+
+Every tagged release publishes:
+
+- **Linux** `x86_64` / `arm64` — `.tar.gz` archives and `.deb` packages (Ubuntu/Debian)
+- **Windows** `x86_64` — `.zip` archive containing `mcp-netbird.exe`
+- **macOS** Intel and Apple Silicon — `.tar.gz` archives
+- `checksums.txt` covering every artifact
+
+**Ubuntu/Debian:**
+```bash
+curl -LO https://github.com/WombleDevelopment/mcp-netbird/releases/latest/download/mcp-netbird_<version>_linux_x86_64.deb
+sudo dpkg -i mcp-netbird_<version>_linux_x86_64.deb
+mcp-netbird --version
+```
+
+**Windows (PowerShell):**
+```powershell
+# Download and extract the .zip from the releases page, then:
+.\mcp-netbird.exe --version
+```
+
+Need a build from an untagged commit? Run the **Build artifacts (no publish)**
+workflow from the Actions tab; it attaches the same binaries, `.deb` packages and
+loadable Docker image tarballs to the run without creating a public release.
 
 **Linux (Debian/Ubuntu)**:
 ```bash
@@ -187,9 +225,9 @@ Run the MCP server locally for development or single-user scenarios.
         "run",
         "--rm",
         "-i",
-        "xnetadmin/mcp-netbird:latest",
-        "-t",
-        "stdio"
+        "-e", "NETBIRD_API_TOKEN",
+        "-e", "NETBIRD_API_HOST",
+        "ghcr.io/wombledevelopment/mcp-netbird:latest"
       ],
       "env": {
         "NETBIRD_API_TOKEN": "nbp_your_token_here",
@@ -211,9 +249,9 @@ Run the MCP server locally for development or single-user scenarios.
         "run",
         "--rm",
         "-i",
-        "xnetadmin/mcp-netbird:latest",
-        "-t",
-        "stdio"
+        "-e", "NETBIRD_API_TOKEN",
+        "-e", "NETBIRD_API_HOST",
+        "ghcr.io/wombledevelopment/mcp-netbird:latest"
       ],
       "env": {
         "NETBIRD_API_TOKEN": "nbp_your_token_here",
@@ -236,10 +274,11 @@ version: '3.8'
 
 services:
   mcp-netbird:
-    image: xnetadmin/mcp-netbird:latest
+    image: ghcr.io/wombledevelopment/mcp-netbird:latest-sse
     container_name: mcp-netbird-server
     restart: unless-stopped
-    command: ["-t", "sse", "-sse-address", "0.0.0.0:8001"]
+    # The -sse image already starts in SSE mode on 0.0.0.0:8001;
+    # no command override is needed.
     environment:
       - NETBIRD_API_TOKEN=nbp_your_token_here
       - NETBIRD_API_HOST=api.netbird.io
@@ -344,7 +383,7 @@ Or for STDIO mode:
 
 ### Complete NetBird API Coverage
 
-The MCP server provides 50+ tools covering all NetBird resources:
+The MCP server provides 59 tools covering all NetBird resources:
 
 | Resource | Operations | Description |
 |----------|-----------|-------------|
@@ -646,7 +685,25 @@ See [docs/MCP_SETUP_GUIDE.md](docs/MCP_SETUP_GUIDE.md) for detailed production d
 
 Build and tag an image:
 ```bash
+# stdio transport
+docker build -t mcp-netbird:local -f Dockerfile .
+
+# SSE transport
 docker build -t mcp-netbird-sse:v1 -f Dockerfile.sse .
+```
+
+Both Dockerfiles cross-compile from the build platform, so multi-architecture
+builds need no QEMU emulation:
+
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 -f Dockerfile.sse .
+```
+
+Behind a registry mirror or in an air-gapped environment, override the builder
+image:
+
+```bash
+docker build --build-arg GO_IMAGE=mirror.gcr.io/library/golang:1.24-bookworm -f Dockerfile .
 ```
 
 Run with different configuration methods:

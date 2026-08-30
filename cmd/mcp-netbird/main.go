@@ -30,10 +30,17 @@ import (
 	"github.com/XNet-NGO/mcp-netbird/tools"
 )
 
+// Build metadata, populated at link time via -ldflags -X.
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
+)
+
 func newServer() *server.MCPServer {
 	s := server.NewMCPServer(
 		"mcp-netbird",
-		"0.1.0",
+		version,
 	)
 	tools.AddNetbirdPeerTools(s)
 	tools.AddNetbirdGroupTools(s)
@@ -79,7 +86,10 @@ func main() {
 	var transport string
 	var apiToken string
 	var apiHost string
-	
+	var showVersion bool
+
+	flag.BoolVar(&showVersion, "version", false, "Print version information and exit")
+
 	flag.StringVar(&transport, "t", "stdio", "Transport type (stdio or sse)")
 	flag.StringVar(
 		&transport,
@@ -91,6 +101,11 @@ func main() {
 	flag.StringVar(&apiToken, "api-token", "", "Netbird API token")
 	flag.StringVar(&apiHost, "api-host", "", "Netbird API host (without protocol)")
 	flag.Parse()
+
+	if showVersion {
+		fmt.Printf("mcp-netbird %s (commit %s, built %s)\n", version, commit, date)
+		return
+	}
 
 	// Create global ConfigLoader instance with CLI flag values
 	mcpnetbird.GlobalConfigLoader = mcpnetbird.NewConfigLoader(apiToken, apiHost)
