@@ -1,0 +1,201 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build, vet and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race ./...
+
+      - name: Guard against the user-management tools returning
+        # This fork deliberately ships without user management. If an upstream
+        # merge reintroduces it, fail here rather than in a published release.
+        run: |
+          if grep -rn "AddNetbirdUserTools" --include='*.go' .; then
+            echo "::error::user-management tools are registered again; this fork ships without them"
+            exit 1
+          fi
+          echo "OK: no user-management tool registration found"
+
+      - name: Guard against documenting env vars the server does not read
+        # The server reads exactly the NETBIRD_* names declared in mcpnetbird.go.
+        # Docs previously advertised NETBIRD_API_HOST and NETBIRD_MGMT_API_ENDPOINT,
+        # neither of which is read, so a configured host was silently ignored.
+        run: |
+          supported=$(grep -oE '"NETBIRD_[A-Z_]+"' mcpnetbird.go | tr -d '"' | sort -u)
+          documented=$(grep -rhoE 'NETBIRD_[A-Z_]+' README.md docs/*.md | sort -u)
+          echo "server reads:"; echo "$supported" | awk '{print "  " $0}'
+          unknown=$(comm -13 <(echo "$supported") <(echo "$documented"))
+          if [ -n "$unknown" ]; then
+            echo "::error::documented but never read by the server:"
+            echo "$unknown" | awk '{print "  " $0}'
+            exit 1
+          fi
+          echo "OK: every documented NETBIRD_* variable is read by the server"
+
+  tools-snapshot:
+    name: Verify advertised tool list
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build server
+        run: go build -o mcp-netbird ./cmd/mcp-netbird
+
+      - name: List tools over stdio and assert none are user tools
+        env:
+          NETBIRD_API_TOKEN: dummy
+        run: |
+          {
+            printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}'
+            printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+            printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+          } | ./mcp-netbird -t stdio 2>/dev/null > tools.jsonl
+          python3 - <<'PY'
+          import json, sys
+          names = []
+          for line in open('tools.jsonl'):
+              try:
+                  msg = json.loads(line)
+              except ValueError:
+                  continue
+              if msg.get('id') == 2:
+                  names = sorted(t['name'] for t in msg['result']['tools'])
+          if not names:
+              sys.exit('no tools/list response from the server')
+          offenders = [n for n in names if 'user' in n.lower()]
+          print(f'{len(names)} tools advertised')
+          print('\n'.join(names))
+          if offenders:
+              sys.exit(f'user-management tools are exposed: {offenders}')
+          PY
+
+  cross-compile:
+    name: Cross-compile ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux,   goarch: amd64 }
+          - { goos: linux,   goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+          - { goos: darwin,  goarch: amd64 }
+          - { goos: darwin,  goarch: arm64 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        env:
+          CGO_ENABLED: '0'
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: go build -trimpath -o /dev/null ./cmd/mcp-netbird
+
+  release-config:
+    name: Validate release config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check .goreleaser.yaml
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: check
+
+  docker:
+    name: Build Docker images (no push)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build stdio image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: mcp-netbird:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build SSE image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.sse
+          push: false
+          load: true
+          tags: mcp-netbird:ci-sse
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke-test the stdio image
+        run: docker run --rm mcp-netbird:ci --version
+
+      - name: Smoke-test the SSE image
+        run: |
+          docker run -d --name sse -p 8001:8001 -e NETBIRD_API_TOKEN=dummy mcp-netbird:ci-sse
+          ready=0
+          for _ in $(seq 1 30); do
+            if docker logs sse 2>&1 | grep -q 'SSE server listening'; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then docker logs sse; docker rm -f sse; exit 1; fi
+          # /sse is a never-ending event stream, so cap the read and inspect the
+          # first frames rather than relying on curl's exit code.
+          out=$(curl -sS -N --max-time 5 http://localhost:8001/sse | head -2 || true)
+          echo "$out"
+          if ! echo "$out" | grep -q 'event: endpoint'; then
+            docker logs sse; docker rm -f sse; exit 1
+          fi
+          docker rm -f sse

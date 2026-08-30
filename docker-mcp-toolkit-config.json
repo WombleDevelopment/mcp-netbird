@@ -15,9 +15,7 @@
         "run",
         "--rm",
         "-i",
-        "mcp-netbird-sse:latest",
-        "--transport",
-        "stdio",
+        "ghcr.io/wombledevelopment/mcp-netbird:latest",
         "--api-token",
         "your-netbird-api-token-here",
         "--api-host",
@@ -31,9 +29,11 @@
         "run",
         "--rm",
         "-i",
-        "mcp-netbird-sse:latest",
-        "--transport",
-        "stdio"
+        "-e",
+        "NETBIRD_API_TOKEN",
+        "-e",
+        "NETBIRD_HOST",
+        "ghcr.io/wombledevelopment/mcp-netbird:latest"
       ],
       "env": {
         "NETBIRD_API_TOKEN": "your-netbird-api-token-here",
