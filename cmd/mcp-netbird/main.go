@@ -46,7 +46,6 @@ func newServer() *server.MCPServer {
 	tools.AddNetbirdNameserverTools(s)
 	tools.AddNetbirdRouteTools(s)
 	tools.AddNetbirdSetupKeyTools(s)
-	tools.AddNetbirdUserTools(s)
 	tools.AddNetbirdAccountTools(s)
 	return s
 }
