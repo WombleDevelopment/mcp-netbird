@@ -357,7 +357,6 @@ The MCP server provides 50+ tools covering all NetBird resources:
 | **Nameservers** | list, get, create, update, delete | Manage DNS nameserver groups |
 | **Routes** | list, get, create, update, delete | Configure network routes (legacy) |
 | **Setup Keys** | list, get, create, update, delete | Generate peer enrollment keys |
-| **Users** | list, get, invite, update, delete | Manage user accounts and permissions |
 | **Posture Checks** | list, get, create, update, delete | Define security posture requirements |
 | **Port Allocations** | list, get, create, update, delete | Manage ingress port forwarding |
 | **Account** | get, update | Configure account-wide settings |

@@ -575,13 +575,6 @@ mcp_MCP_DOCKER_create_netbird_nameserver({
 - `update_netbird_setup_key` - Update setup key configuration
 - `delete_netbird_setup_key` - Delete a setup key
 
-### User Management
-- `list_netbird_users` - List all users
-- `get_netbird_user` - Get user details
-- `invite_netbird_user` - Invite a new user
-- `update_netbird_user` - Update user configuration
-- `delete_netbird_user` - Delete a user
-
 ### Posture Check Management
 - `list_netbird_posture_checks` - List posture checks
 - `get_netbird_posture_check` - Get posture check details
