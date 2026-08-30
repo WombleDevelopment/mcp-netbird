@@ -110,8 +110,7 @@ services:
     command: ["-t", "sse", "-sse-address", "0.0.0.0:8001"]
     environment:
       - NETBIRD_API_TOKEN=your_api_token_here
-      - NETBIRD_API_HOST=api.netbird.io
-      - NETBIRD_MGMT_API_ENDPOINT=https://api.netbird.io
+      - NETBIRD_HOST=api.netbird.io
     ports:
       - "8001:8001"
     networks:
@@ -250,8 +249,7 @@ Run the MCP server locally for development or single-user scenarios.
       ],
       "env": {
         "NETBIRD_API_TOKEN": "your_api_token_here",
-        "NETBIRD_API_HOST": "api.netbird.io",
-        "NETBIRD_MGMT_API_ENDPOINT": "https://api.netbird.io"
+        "NETBIRD_HOST": "api.netbird.io"
       },
       "disabled": false
     }
@@ -278,8 +276,7 @@ Run the MCP server locally for development or single-user scenarios.
       ],
       "env": {
         "NETBIRD_API_TOKEN": "your_api_token_here",
-        "NETBIRD_API_HOST": "api.netbird.io",
-        "NETBIRD_MGMT_API_ENDPOINT": "https://api.netbird.io"
+        "NETBIRD_HOST": "api.netbird.io"
       }
     }
   }
@@ -372,8 +369,7 @@ Update your MCP client configuration to include the gateway:
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
 | `NETBIRD_API_TOKEN` | Yes | NetBird API token | `nbp_abc123...` |
-| `NETBIRD_API_HOST` | Yes | NetBird API hostname (without protocol) | `api.netbird.io` |
-| `NETBIRD_MGMT_API_ENDPOINT` | No | Full management API URL | `https://api.netbird.io` |
+| `NETBIRD_HOST` | No | NetBird API hostname (without protocol). Defaults to `api.netbird.io`; set it for self-hosted deployments | `api.example.com` |
 
 ### Command Line Flags
 

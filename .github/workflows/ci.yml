@@ -44,6 +44,22 @@ jobs:
           fi
           echo "OK: no user-management tool registration found"
 
+      - name: Guard against documenting env vars the server does not read
+        # The server reads exactly the NETBIRD_* names declared in mcpnetbird.go.
+        # Docs previously advertised NETBIRD_API_HOST and NETBIRD_MGMT_API_ENDPOINT,
+        # neither of which is read, so a configured host was silently ignored.
+        run: |
+          supported=$(grep -oE '"NETBIRD_[A-Z_]+"' mcpnetbird.go | tr -d '"' | sort -u)
+          documented=$(grep -rhoE 'NETBIRD_[A-Z_]+' README.md docs/*.md | sort -u)
+          echo "server reads:"; echo "$supported" | awk '{print "  " $0}'
+          unknown=$(comm -13 <(echo "$supported") <(echo "$documented"))
+          if [ -n "$unknown" ]; then
+            echo "::error::documented but never read by the server:"
+            echo "$unknown" | awk '{print "  " $0}'
+            exit 1
+          fi
+          echo "OK: every documented NETBIRD_* variable is read by the server"
+
   tools-snapshot:
     name: Verify advertised tool list
     runs-on: ubuntu-latest

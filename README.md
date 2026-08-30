@@ -49,7 +49,7 @@ docker run -d \
   --name mcp-netbird \
   -p 8001:8001 \
   -e NETBIRD_API_TOKEN=your_token_here \
-  -e NETBIRD_API_HOST=api.netbird.io \
+  -e NETBIRD_HOST=api.netbird.io \
   ghcr.io/wombledevelopment/mcp-netbird:latest-sse
 ```
 
@@ -226,12 +226,12 @@ Run the MCP server locally for development or single-user scenarios.
         "--rm",
         "-i",
         "-e", "NETBIRD_API_TOKEN",
-        "-e", "NETBIRD_API_HOST",
+        "-e", "NETBIRD_HOST",
         "ghcr.io/wombledevelopment/mcp-netbird:latest"
       ],
       "env": {
         "NETBIRD_API_TOKEN": "nbp_your_token_here",
-        "NETBIRD_API_HOST": "api.netbird.io"
+        "NETBIRD_HOST": "api.netbird.io"
       },
       "disabled": false
     }
@@ -250,12 +250,12 @@ Run the MCP server locally for development or single-user scenarios.
         "--rm",
         "-i",
         "-e", "NETBIRD_API_TOKEN",
-        "-e", "NETBIRD_API_HOST",
+        "-e", "NETBIRD_HOST",
         "ghcr.io/wombledevelopment/mcp-netbird:latest"
       ],
       "env": {
         "NETBIRD_API_TOKEN": "nbp_your_token_here",
-        "NETBIRD_API_HOST": "api.netbird.io"
+        "NETBIRD_HOST": "api.netbird.io"
       }
     }
   }
@@ -281,7 +281,7 @@ services:
     # no command override is needed.
     environment:
       - NETBIRD_API_TOKEN=nbp_your_token_here
-      - NETBIRD_API_HOST=api.netbird.io
+      - NETBIRD_HOST=api.netbird.io
     ports:
       - "8001:8001"
 ```
@@ -364,7 +364,7 @@ Or for STDIO mode:
 {
   "env": {
     "NETBIRD_API_TOKEN": "your_token",
-    "NETBIRD_API_HOST": "api.yourdomain.com"
+    "NETBIRD_HOST": "api.yourdomain.com"
   }
 }
 ```
@@ -712,7 +712,7 @@ Run with different configuration methods:
 ```bash
 docker run --name mcp-netbird -p 8001:8001 \
   -e NETBIRD_API_TOKEN=your_token \
-  -e NETBIRD_API_HOST=api.netbird.io \
+  -e NETBIRD_HOST=api.netbird.io \
   mcp-netbird-sse:v1
 ```
 
