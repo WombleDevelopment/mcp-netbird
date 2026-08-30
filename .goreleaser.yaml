@@ -175,10 +175,10 @@ release:
     ### Docker
     ```bash
     # stdio transport (subprocess MCP clients)
-    docker pull ghcr.io/wombledevelopment/mcp-netbird:{{ .Tag }}
+    docker pull ghcr.io/wombledevelopment/mcp-netbird:{{ .Version }}
     
     # SSE transport (long-running HTTP server)
-    docker pull ghcr.io/wombledevelopment/mcp-netbird:{{ .Tag }}-sse
+    docker pull ghcr.io/wombledevelopment/mcp-netbird:{{ .Version }}-sse
     ```
     
     ### What's Changed
